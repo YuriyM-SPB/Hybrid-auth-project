@@ -1,0 +1,20 @@
+# Extract timing features from raw keystroke event batch
+
+def extract_keystroke_features(keystroke_data):
+    hold_times = []
+    flight_times = []
+    last_release = None
+
+    for event in keystroke_data['events']:
+        if 'hold_time' in event:
+            hold_times.append(event['hold_time'])
+        if last_release is not None and 'down_time' in event:
+            flight_times.append(event['down_time'] - last_release)
+        if 'up_time' in event:
+            last_release = event['up_time']
+
+    # Summary features
+    avg_hold = sum(hold_times) / len(hold_times) if hold_times else 0
+    avg_flight = sum(flight_times) / len(flight_times) if flight_times else 0
+
+    return [avg_hold, avg_flight]  # Example feature vector

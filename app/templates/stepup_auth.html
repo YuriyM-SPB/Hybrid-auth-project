@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Step-Up Authentication</title>
+</head>
+<body>
+    <h2>Additional Verification Required</h2>
+    <p>For your security, please confirm your password to continue.</p>
+
+    <form action="{{ url_for('main.stepup_auth') }}" method="post">
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" required><br><br>
+        <button type="submit">Verify</button>
+    </form>
+
+    <p>If you fail verification, your session will be terminated.</p>
+</body>
+</html>

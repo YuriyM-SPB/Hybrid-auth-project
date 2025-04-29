@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Hybrid Auth System</title>
+</head>
+<body>
+    <h1>Welcome, {{ current_user.username }}!</h1>
+    <p>Your session is being continuously protected by hybrid authentication (keystrokes + context risk).</p>
+    
+    <textarea placeholder="Type something here..." rows="10" cols="80"></textarea>
+    
+    <form action="{{ url_for('main.logout') }}" method="post" style="margin-top:20px;">
+        <button type="submit">Logout</button>
+    </form>
+
+    <script src="{{ url_for('static', filename='js/keystroke_capture.js') }}"></script>
+</body>
+</html>
