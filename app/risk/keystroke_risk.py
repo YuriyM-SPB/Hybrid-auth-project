@@ -1,4 +1,4 @@
-rom app.utils.feature_extraction import extract_keystroke_features
+from app.utils.feature_extraction import extract_keystroke_features
 
 # In-memory store for session typing profiles
 keystroke_profiles = {}

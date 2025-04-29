@@ -19,4 +19,4 @@ def evaluate_context_risk(request):
 def extract_features_from_request(request):
     # TODO: Implement realistic feature extraction
     # Example: IP address, User-Agent hash, etc.
-    return [0.5, 0.2, 0.7]  # Placeholder dummy features
+    return [0.5] * 10  # 10 dummy features

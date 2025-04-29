@@ -5,3 +5,4 @@ MLE_RBA/*.pkl
 *.db
 .env
 project_struct.txt
+venv/
