@@ -57,7 +57,7 @@ def stepup_auth():
             return redirect(url_for('main.login'))
     return render_template('stepup_auth.html')
 
-@main.route('/logout')
+@main.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     logout_user()
