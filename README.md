@@ -13,7 +13,7 @@ The system continuously monitors user risk during an active session, combining c
 
 ---
 
-## Current MVP features (April 2025)
+## Current MVP features 
 
 - User login with basic password authentication.
 - Context risk scoring at login based on MLE-RBA.

@@ -1,27 +1,30 @@
 from app.utils.feature_extraction import extract_keystroke_features
+from keystroke_model.profile_manager import update_profile, get_profile
+import numpy as np
+import logging
 
-# In-memory store for session typing profiles
-keystroke_profiles = {}
+logger = logging.getLogger(__name__)
 
-# Update the user's keystroke profile with new typing batch
-def update_keystroke_profile(user_id, keystroke_data):
-    if user_id not in keystroke_profiles:
-        keystroke_profiles[user_id] = []
-    features = extract_keystroke_features(keystroke_data)
-    keystroke_profiles[user_id].append(features)
+def process_keystroke_batch(user_id, keystroke_data):
+    dwell_times, flight_times = extract_keystroke_features(keystroke_data)
+    profile = get_profile(user_id)
 
-# Evaluate typing anomaly for the session
-def evaluate_keystroke_risk(user_id):
-    profiles = keystroke_profiles.get(user_id, [])
-    if len(profiles) < 2:
-        return 0.0  # Not enough data, assume low risk
-    
-    # Compare last sample with average profile
-    import numpy as np
-    baseline = np.mean(profiles[:-1], axis=0)
-    latest = profiles[-1]
-    
-    distance = np.linalg.norm(baseline - latest)
-    # Normalize distance to [0,1] risk score range
-    risk_score = min(distance / 1.0, 1.0)  # 1.0 is arbitrary max expected distance
-    return risk_score
+    if not profile:
+        logger.info(f"Initializing profile for user {user_id}")
+        update_profile(user_id, dwell_times, flight_times)
+        return 0.0
+
+    def score(features, mean, std):
+        if std == 0:
+            return 0.0
+        z_scores = [(f - mean) / std for f in features if f is not None and std > 0]
+        outliers = [z for z in z_scores if abs(z) > 3]
+        return len(outliers) / len(features) if features else 0.0
+
+    risk_dwell = score(dwell_times, profile['mean_dwell'], profile['std_dwell'])
+    risk_flight = score(flight_times, profile['mean_flight'], profile['std_flight'])
+    total_risk = (risk_dwell + risk_flight) / 2
+
+    logger.info(f"User {user_id} anomaly score: {total_risk:.3f}")
+    update_profile(user_id, dwell_times, flight_times)
+    return total_risk
