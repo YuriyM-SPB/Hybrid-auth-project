@@ -21,14 +21,12 @@ document.addEventListener("DOMContentLoaded", function () {
             matchingEvent.hold_time = upTime - matchingEvent.down_time;
         }
 
-        // Calculate flight time if possible
-        if (lastKeyUpTime !== null) {
+        if (lastKeyUpTime !== null && matchingEvent) {
             matchingEvent.flight_time = matchingEvent.down_time - lastKeyUpTime;
         }
         lastKeyUpTime = upTime;
 
-        // Send after every 5 key events
-        if (events.length >= 5) {
+        if (events.length >= 10) { 
             sendKeystrokeData();
         }
     });
@@ -38,20 +36,17 @@ function sendKeystrokeData() {
     const payload = { events: events };
     fetch("/api/keystroke", {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Keystroke score:", data.keystroke_score);
-            console.log("Combined risk:", data.combined_risk);
-        })
-        .catch(error => {
-            console.error("Error sending keystroke data:", error);
-        });
+    .then(response => response.json())
+    .then(data => {
+        console.log("Keystroke score:", data.keystroke_score);
+        console.log("Combined risk:", data.combined_risk);
+    })
+    .catch(error => {
+        console.error("Error sending keystroke data:", error);
+    });
 
-    // Clear for next batch
     events = [];
 }

@@ -3,33 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .scores { margin: 1em 0; }
+        .scores p { margin: 0.5em 0; }
+        .high-risk { color: red; font-weight: bold; }
+        .medium-risk { color: orange; }
+        .low-risk { color: green; }
+    </style>
 </head>
 <body>
     <h1>Welcome to the Dashboard</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class="flashes">
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    <div id="risk-status">
-        <p><strong>Context Risk Score:</strong> <span id="contextScore">...</span></p>
-        <p><strong>Keystroke Anomaly Score:</strong> <span id="keystrokeScore">...</span></p>
+    <!-- Risk scores -->
+    <div class="scores">
+        <p><strong>Context Risk Score:</strong> <span id="contextScore">0.0</span></p>
+        <p><strong>Keystroke Risk Score:</strong> <span id="keystrokeScore">0.0</span></p>
+        <p><strong>Combined Risk:</strong> <span id="combinedScore">0.0</span></p>
+        <p><strong>Status:</strong> <span id="riskStatus">Normal</span></p>
     </div>
 
+    <!-- Typing input -->
+    <p>Type here to generate keystroke data:</p>
+    <textarea id="typingBox" rows="6" cols="60" placeholder="Type something..."></textarea>
 
-    <p>Please type some text below:</p>
-    <textarea id="typingBox" rows="6" cols="60" placeholder="Type here..."></textarea>
-
+    <!-- Logout -->
     <form method="POST" action="{{ url_for('main.logout') }}">
         <button type="submit">Logout</button>
     </form>
 
+    <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/keystroke_capture.js') }}"></script>
     <script>
     function updateRiskScores() {
@@ -38,13 +41,25 @@
             .then(data => {
                 document.getElementById("contextScore").innerText = data.context_score.toFixed(3);
                 document.getElementById("keystrokeScore").innerText = data.keystroke_score.toFixed(3);
+                document.getElementById("combinedScore").innerText = data.combined_risk.toFixed(3);
+
+                const statusEl = document.getElementById("riskStatus");
+                if (data.needs_stepup) {
+                    statusEl.innerText = "Step-up Required!";
+                    statusEl.className = "high-risk";
+                } else if (data.combined_risk >= 0.5) {
+                    statusEl.innerText = "Elevated Risk";
+                    statusEl.className = "medium-risk";
+                } else {
+                    statusEl.innerText = "Normal";
+                    statusEl.className = "low-risk";
+                }
             });
     }
 
-    // Update every 3 seconds
+    // Poll every 3 seconds
     setInterval(updateRiskScores, 3000);
-    updateRiskScores();  
+    updateRiskScores();
     </script>
-
 </body>
 </html>

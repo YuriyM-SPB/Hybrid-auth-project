@@ -54,6 +54,17 @@ def receive_keystrokes():
         'needs_stepup': session['needs_stepup']
     })
 
+@main.route('/api/risk_status')
+@login_required
+def risk_status():
+    return jsonify({
+        'context_score': session.get('context_risk', 0.0),
+        'keystroke_score': session.get('keystroke_score', 0.0),
+        'combined_risk': max(session.get('context_risk', 0.0), session.get('keystroke_score', 0.0)),
+        'needs_stepup': session.get('needs_stepup', False)
+    })
+
+
 
 @main.route('/stepup', methods=['GET', 'POST'])
 @login_required
@@ -76,12 +87,3 @@ def logout():
     logout_user()
     #flash("You have been logged out.", 'info')
     return redirect(url_for('main.login'))
-
-@main.route('/api/risk_status')
-@login_required
-def risk_status():
-    return jsonify({
-        'keystroke_score': session.get('keystroke_score', 0.0),
-        'context_score': session.get('context_risk', 0.0),
-        'needs_stepup': session.get('needs_stepup', False)
-    })
