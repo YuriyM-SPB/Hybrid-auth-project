@@ -8,6 +8,7 @@ from app.risk.keystroke_risk import process_keystroke_batch
 from app.risk.fusion_engine import fuse_risks
 from app.models.user import User
 
+
 main = Blueprint('main', __name__)
 
 @main.route('/', methods=['GET', 'POST'])
@@ -43,10 +44,16 @@ def receive_keystrokes():
     keystroke_data = request.get_json()
     score = process_keystroke_batch(current_user.id, keystroke_data)
     session['keystroke_score'] = score
-    combined_risk = fuse_risks(session['context_risk'], score)
-    if combined_risk >= 0.8:
+    combined, needs_stepup = fuse_risks(session['context_risk'], score)
+    if needs_stepup:
         session['needs_stepup'] = True
-    return jsonify({'keystroke_score': score, 'combined_risk': combined_risk})
+    return jsonify({
+        'keystroke_score': score,
+        'context_score': session['context_risk'],
+        'combined_risk': combined,
+        'needs_stepup': session['needs_stepup']
+    })
+
 
 @main.route('/stepup', methods=['GET', 'POST'])
 @login_required

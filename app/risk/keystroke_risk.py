@@ -1,30 +1,40 @@
-from app.utils.feature_extraction import extract_keystroke_features
-from keystroke_model.profile_manager import update_profile, get_profile
 import numpy as np
-import logging
+from app.utils.feature_extraction import extract_keystroke_features
+from keystroke_model.profile_manager import get_profile, update_profile
 
-logger = logging.getLogger(__name__)
+def z_score(value, mean, std):
+    if std <= 0:
+        return 0
+    return (value - mean) / std
 
 def process_keystroke_batch(user_id, keystroke_data):
+    """Return anomaly score [0,1]."""
     dwell_times, flight_times = extract_keystroke_features(keystroke_data)
-    profile = get_profile(user_id)
 
-    if not profile:
-        logger.info(f"Initializing profile for user {user_id}")
-        update_profile(user_id, dwell_times, flight_times)
+    # Skip empty
+    if not dwell_times and not flight_times:
         return 0.0
 
-    def score(features, mean, std):
-        if std == 0:
-            return 0.0
-        z_scores = [(f - mean) / std for f in features if f is not None and std > 0]
-        outliers = [z for z in z_scores if abs(z) > 3]
-        return len(outliers) / len(features) if features else 0.0
+    profile = get_profile(user_id)
+    if profile is None:
+        update_profile(user_id, dwell_times, flight_times)
+        return 0.0  
 
-    risk_dwell = score(dwell_times, profile['mean_dwell'], profile['std_dwell'])
-    risk_flight = score(flight_times, profile['mean_flight'], profile['std_flight'])
-    total_risk = (risk_dwell + risk_flight) / 2
+    # Compute averages for current batch
+    avg_dwell = np.mean([d for d in dwell_times if d is not None]) if dwell_times else profile["mean_dwell"]
+    avg_flight = np.mean([f for f in flight_times if f is not None]) if flight_times else profile["mean_flight"]
 
-    logger.info(f"User {user_id} anomaly score: {total_risk:.3f}")
-    update_profile(user_id, dwell_times, flight_times)
-    return total_risk
+    # Z-scores
+    zd = z_score(avg_dwell, profile["mean_dwell"], profile["std_dwell"])
+    zf = z_score(avg_flight, profile["mean_flight"], profile["std_flight"])
+
+    distance = np.sqrt(zd**2 + zf**2)
+
+    # Normalize to [0,1] risk score
+    risk_score = min(distance / 5.0, 1.0)  
+
+    # Update profile if not anomalous
+    if risk_score < 0.5:
+        update_profile(user_id, dwell_times, flight_times)
+
+    return float(risk_score)
