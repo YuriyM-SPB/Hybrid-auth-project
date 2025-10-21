@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         lastKeyUpTime = upTime;
 
-        if (events.length >= 10) { 
+        if (events.length >= 10) {
             sendKeystrokeData();
         }
     });
@@ -34,19 +34,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function sendKeystrokeData() {
     const payload = { events: events };
+    const t0 = performance.now();
     fetch("/api/keystroke", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        console.log("Keystroke score:", data.keystroke_score);
-        console.log("Combined risk:", data.combined_risk);
+        const rtt = performance.now() - t0;
+        console.log("rtt_ms:", rtt.toFixed(1), "score:", data.keystroke_score.toFixed(3));
     })
-    .catch(error => {
-        console.error("Error sending keystroke data:", error);
-    });
+    .catch(err => console.error("Error sending keystroke data:", err));
 
     events = [];
 }

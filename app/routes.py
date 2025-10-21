@@ -7,6 +7,8 @@ from app.risk.context_risk import evaluate_context_risk
 from app.risk.keystroke_risk import process_keystroke_batch
 from app.risk.fusion_engine import fuse_risks
 from app.models.user import User
+from app.utils.metrics import metrics
+from time import perf_counter
 
 
 main = Blueprint('main', __name__)
@@ -41,18 +43,33 @@ def dashboard():
 @main.route('/api/keystroke', methods=['POST'])
 @login_required
 def receive_keystrokes():
-    keystroke_data = request.get_json()
-    score = process_keystroke_batch(current_user.id, keystroke_data)
+    t0 = perf_counter()
+    keystroke_data = request.get_json(silent=True) or {}
+    events = keystroke_data.get('events', [])
+    metrics.add("keystroke_batch_size", len(events))
+
+    # Time the scoring call specifically
+    with metrics.timer("keystroke_process_ms"):
+        score = process_keystroke_batch(current_user.id, keystroke_data)
+
+    # Fusion timing (tiny, but measured)
+    with metrics.timer("risk_fusion_ms"):
+        combined, needs_stepup = fuse_risks(session.get('context_risk', 0.0), score)
+
     session['keystroke_score'] = score
-    combined, needs_stepup = fuse_risks(session['context_risk'], score)
     if needs_stepup:
         session['needs_stepup'] = True
+
+    # Overall route time
+    metrics.add("route_keystroke_ms", (perf_counter() - t0) * 1000.0)
+
     return jsonify({
         'keystroke_score': score,
-        'context_score': session['context_risk'],
+        'context_score': session.get('context_risk', 0.0),
         'combined_risk': combined,
-        'needs_stepup': session['needs_stepup']
+        'needs_stepup': session.get('needs_stepup', False)
     })
+
 
 @main.route('/api/risk_status')
 @login_required
@@ -64,6 +81,17 @@ def risk_status():
         'needs_stepup': session.get('needs_stepup', False)
     })
 
+@main.route('/api/metrics')
+@login_required
+def api_metrics():
+    snap = metrics.snapshot()
+    # Optionally include current session risk for convenience
+    snap['current_session'] = {
+        'context_score': session.get('context_risk', 0.0),
+        'keystroke_score': session.get('keystroke_score', 0.0),
+        'needs_stepup': session.get('needs_stepup', False)
+    }
+    return jsonify(snap)
 
 
 @main.route('/stepup', methods=['GET', 'POST'])
@@ -81,9 +109,16 @@ def stepup_auth():
             return redirect(url_for('main.login'))
     return render_template('stepup_auth.html')
 
+@main.route('/metrics')
+@login_required
+def metrics_page():
+    return render_template('metrics.html')
+
 @main.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     logout_user()
     #flash("You have been logged out.", 'info')
     return redirect(url_for('main.login'))
+
+

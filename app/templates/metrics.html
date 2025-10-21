@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><title>Metrics</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 1rem; }
+    table { border-collapse: collapse; }
+    th, td { padding: 6px 10px; border: 1px solid #ccc; text-align: right; }
+    th { background: #f5f5f5; }
+    caption { text-align: left; font-weight: bold; margin-bottom: .5rem; }
+    .mono { font-family: Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Runtime Metrics</h1>
+  <div id="cur"></div>
+  <table id="t"><caption>Timers (ms)</caption>
+    <thead>
+      <tr><th class="mono">metric</th><th>count</th><th>avg</th><th>p50</th><th>p95</th><th>p99</th><th>min</th><th>max</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    function fmt(x){ return (typeof x === 'number') ? x.toFixed(2) : x; }
+
+    function load() {
+      fetch("/api/metrics")
+        .then(r => r.json())
+        .then(m => {
+          const tbody = document.querySelector("#t tbody");
+          tbody.innerHTML = "";
+          const timers = Object.entries(m).filter(([k,v]) => k !== 'current_session');
+          timers.forEach(([name, stats]) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td class="mono" style="text-align:left">${name}</td>
+              <td>${stats.count}</td>
+              <td>${fmt(stats.avg)}</td>
+              <td>${fmt(stats.p50)}</td>
+              <td>${fmt(stats.p95)}</td>
+              <td>${fmt(stats.p99)}</td>
+              <td>${fmt(stats.min)}</td>
+              <td>${fmt(stats.max)}</td>`;
+            tbody.appendChild(tr);
+          });
+          const cur = m.current_session || {};
+          document.getElementById("cur").innerText =
+            `Current Session — context: ${fmt(cur.context_score)} | keystroke: ${fmt(cur.keystroke_score)} | step-up: ${cur.needs_stepup}`;
+        });
+    }
+    setInterval(load, 2000);
+    load();
+  </script>
+</body>
+</html>
